@@ -29,3 +29,14 @@ const client = new someClass(uri,
 ```
 There is going to be a lot of JSON object floating around in your code. There are two aspects to learn here. First is to understand them and be able to quickly parse them, know how different key value pairs can be accessed, assigned etc. Second aspect is to know to package your information into your own custom JSON objects when and where suited.
 
+Ideally, you should have an understanding of the following topics. 
+
+Asynchronous vs Synchronous Programming
+Creating Events and Listeners
+Using try/catch blocks to handle errors. 
+Installing and importing third party libraries. 
+Creating your own reusable modules and exporting.
+Using callback functions. 
+Having a good grasp of functions performed on arrays and objects like map, reduce, filter and more. 
+
+So this course is not going to focus on explaining Javascript. For that, I have a separate repository. 
