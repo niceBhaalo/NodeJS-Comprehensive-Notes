@@ -1,278 +1,301 @@
 # Why do we need promises?
 
-Until now, we have seen how callback functions work, NodeJS attaches a function to some listener like setTimeout
-and which calls the attached function when some conditions meet. 
+Until now, we have seen how callback functions work, NodeJS attaches a function to some asynchronous event
+which we are simulating with setTimeout and this function is called when the asynchronous response is 
+met.  
 
-But, what if instead of just calling the function, we then also need to perform another operation after the previous one. 
+So imagine this scenario. You called a weatherAPI to provide some data. You can't wait for the data while 
+the rest of the server is stalled. So you tell weatherAPI that whenever you have a response available,
+send it to this callback function. 
 
-The pseudo code is this. 
-1. We create and attach a callback function to a listener. 
-2. The listener at its own pace calls the callback function. 
-3. And if the callback function is successful, NodeJS has to do something else like a Function 2. 
+For example it will look like this in pseudocode. 
 
-One way would be to simply nest Function 2 inside the main callback function but that is not ideal for three reasons. 
-Nested callbacks if you recall from an example is Lesson 4 get very unreadable very fast. Second, maybe sometimes 
-you need to call Function 3 after the same callback function in another instance and you will have to create an entire new callback function which has now Function 3 nested. 
-Lastly, the reason why that is not ideal is because of a principle called Single Priority Functions. This is just a 
-recommended way of writing code that a single function should only do one single thing. Nesting one into another may sometimes 
-be fine but mostly it will be violating this principle. 
+callingWeatherAPI((data)=>{
+	console.log(data);
+}, 'www.weather.com/url');
 
-So, then. If we shouldn't use nested callback functions, what should we use? 
+This is not correct syntax. But effectively you tell weather.com that whenever you have some data for me, 
+you put that into this anonymous function which then performs some operation. This works but is not scalable.
 
-Promises. 
+Let's make it specific. Say your user gives you their location and a medication they want. So 
+you have to find the closest pharmacy to them. And you have an API called findingPharmacy that does that. 
 
-## What are Promises? 
+findingPharmacy(clientsLocation, (pharmacy)=> {
+	console.log(pharmacy);
+), 'www.pharmecies.com/url/location');
 
-A promise is a javascript object which allows you to listen to some asynchronous activity and allow you to connect 
-and link multiple asynchronous activities. 
+But then you say, well I have to check whether the pharmacy is currently open or not. You have an API for that, 
+but you need to nest that request inside the previous one because only after you know which pharmacy is 
+closest do you check whether that is open. So it will look like this. It's called a nested callback. 
 
-So let's take the following example. 
+findingPharmacy(clientsLocation, (pharmacy)=> {
+	console.log(pharmacy);
+	checkingIfOpen(pharmacy.id, (isOpen)=>{
+		console.log(isOpen);
+	}, www.openTimes.com/url/pharmacy);
+), 'www.pharmecies.com/url/location');
+
+And then you have to check whether that open pharmacy has the requested medicine or not. You have an API called 
+check medicine that does that but you have to request it inside the inner most function because you will
+only check whether the pharmacy has your medicine stocked after you know it is open. 
+
+findingPharmacy(clientsLocation, (pharmacy)=> {
+	console.log(pharmacy);
+	checkingIfOpen(pharmacy.id, (isOpen)=>{
+		console.log(isOpen);
+		if (isOpen) {
+			checkingStock(medicineName, (isStocked)=>{
+				console.log(isStocked);
+			}, 'www.medicineStock.com/url/medicine');
+		}
+	}, 'www.openTimes.com/url/pharmacy');
+), 'www.pharmecies.com/url/location');
+
+And if the medicine is stocked, you need to return to the user that your medicine could be found at this 
+pharmacy but this pharmacy closes at this certain time. 
+And since this is just the pseudo code, you can imagine how complicated this nesting can get. Technically 
+this works, but you need so many error handling attached to even simple nesting like this that we 
+need a different way that is easier, scalable, and more modular. 
+
+That solution requires a NodeJS object called Promise. 
+
+But firstly promises solve an even basic problem. Which is how do you know if the data being received 
+is an error or valid data without checking it yourself? Promises provide a way for API developers to inform
+their users whether an API request is sending valid data or something went wrong and this is an error. 
+
+For this, we have to construct a promise. 
+
+Let's say we have the findingPharmacies API. Without a promise, you will have something like this. 
 
 ```javascript
-function callbackFunction(parameter) {
+function findingPharmacies (clientLocation) {
+	try {
+		const closestPharmacy = findSmallestDistance(clientLocation, listOfPharmacies);
+		return (closestPharmacy);
+	} catch (error) {
+		return (error);
+	}
+}
+```
+And now it is for the user to have an if statement to know whether the response is an error or a valid pharmacy. 
+An error could occur here for many reasons the simplest being incorrect formatting of client's location 
+or connection issues. Instead of making the user of the API manually check for errors, the API 
+developer will create a promise like this. 
+
+```javascript
+function findingPharmacies (clientLocation) {
+	const myPromise = new Promise ((resolve, reject) => {
+		try {
+			const closestPharmacy = findSmallestDistance(clientLocation, listOfPharmacies);
+			resolve (closestPharmacy);
+		} catch (error) {
+			reject (error);
+		}
+	});
+	returns (myPromise);
+}
+```
+So instead of their being two or multiple return statements, the API developer uses the keywords resolve and reject
+(and there could be multiple resolves and rejects in a single promise). Only one of them is going to be 
+hit during one single execution. Effectively, both resolve and reject do the function of the return 
+statement while also notifying whether the returned value is a valid and useful value or it is an 
+error message. The resolve value will have the valid value, and the reject value will have the error value. 
+
+And the function itself returns the Promise object instead of the individual paths. To access the two 
+possible paths, a Promise has two functions called .then() and .catch(). And we call 
+both of these functions on the returned promise. 
+
+```javascript
+findingPharmacies(clientLocation, 'www.pharmacies.com')
+	.then((data)=>{
+		console.log(data);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+
+So to reiterate, `findingPharmacies()` returns a promise which has a .then() and .catch() function which 
+we are calling in this example. 
+
+The user of the API which will be you can then access separately the .then() path and the .catch(). 
+If behind the scenes the API had hit the resolve(closestPharmacy) the flow of execution will continue to
+the .then() function. And if there was an error and reject(error) was hit, you will continue 
+the flow of execution from the .catch() function bypassing the .then() function. 
+
+So this is the first main benefit of promises. The API does not return the data but it returns a promise. 
+And then you can access the properties of a promise which are .then() and .catch().
+
+Now let's look at some working code that uses a promise that you can play with. Let's create an API 
+that does the following. It receives an array of integers and then it doubles every value and returns 
+the array. Without a promise, it looks like this. 
+
+```javascript
+function doublingArrayValues (inputArray) {
 	try {
 		return(parameter.map((x)=>x*2));
 	} catch (error) {
-		return(null);
+		return("Error at callbackFunction: ", error);
 	}
 }
 
-const myPromise = new Promise(() => {
-	setTimeout(()=>{
-		const output = callbackFunction([1,2,3]);
-		console.log(output);
-	}, 2000);
-});
+const newArray = doublingArrayValues([1,2,3]);
+console.log(newArray);
+sendResponseToUser(newArray);
 ```
 
-Right now, this is what happens. When you initialize a promise like this, whatever code you wrote inside it is executed. 
-When you run this code, you will see that it returns an array in the console.log(output) statement. 
+You should see the problem here. Sometimes newArray would be a valid array and other times it will be an 
+error string making it unusable as an array. 
+You could then use an if else statement to figure out if newArray is a valid string with integers and what-not
+but let's use a promise. 
 
-Let's create a context for this code. You had to wait 2 seconds and then call the callback function and log its output. 
-The callbackFunction either returns a proper array or it returns null if there was an error. Now you want the following. 
-If you got the array, let's just display it. And if you had an error, you display a dummy array. 
-
-This is called resolving or rejecting a promise. So when you have the ideal situation, that is resolving the 
-promise. And when there is an error, you reject the promise. 
-
-## Resolving and Rejecting Promises
-
-And this resolve and reject is done exactly how you would return a value from a function. We change the promise like this.
 ```javascript
-const myPromise = new Promise((resolve, reject) => {
-	setTimeout(()=>{
-		const output = callbackFunction(65);
-		if (output === null) {
-			reject();
-		} else {
-			resolve();
+function doublingArrayValues (inputArray) {
+	const myPromise = new Promise ((resolve, reject) => {
+		try {
+			resolve(parameter.map((x)=>x*2));
+		} catch (error) {
+			reject("Error at callbackFunction: ", error);
 		}
-	}, 2000);
-});
-```
-Now running this on its own will throw an error because of a different reason. But I just want to explain this 
-chunk of code. A promise takes not just any anonymous function as an input, instead it takes an anonymous function
-with the two optional parameters that you can name, the first refers to resolve and the other to reject. These 
-are just listener names.
-Functionally the code is equivalent to. 
-```javascript
-const myPromise = new Promise((banana, apple) => {
-	setTimeout(()=>{
-		const output = callbackFunction([1,2,3]);
-		console.log(output);
-		if (output === null) {
-			apple();
-		} else {
-			banana();
-		}
-	}, 2000);
-});
-```
-Just remember that the first is for resolving, and the other is for rejecting and these are just placeholder listeners. 
-So what are they listeners for exactly? 
+	});
 
-## .then() function
-
-A promise is a javascript object with an in-built function called then function. 
-The resolve listener is tied to the then function. 
-
-We describe the then function like.
-
-```javascript
-myPromise.then(()=>{console.log("I am resolved"));
-```
-So, for this code. 
-
-```javascript
-function callbackFunction(parameter) {
-	try {
-		return(parameter.map((x)=>x*2));
-	} catch (error) {
-		return(null);
-	}
 }
 
-const myPromise = new Promise((resolve, reject) => {
-	setTimeout(() => {
-		const output = callbackFunction([1,2,3]);
-		console.log(output);
-		if (output === null) {
-			reject();
-		} else {
-			resolve();
-		}
-	}, 2000);
-});
+doublingArrayValues([1,2,3])
+	.then((data)=>{
+		const newArray = data;
+		console.log(newArray);
+		sendResponseToUser(newArray);
+	})
+	.catch((error)=> {
+		console.log(error);
+	);
+``` 
 
-myPromise.then(()=>{console.log("I am Resolved")});
-```
-We will get the following output. 
-```text
-[ 2, 4, 6 ]
-I am Resolved
-```
-When the code reached the resolve code, it looked for a .then() invocation for the myPromise. Since it was 
-present and defined, the anonymous function inside the .then() is then executed. Obviously you will be including a .then() for any 
-promise but if for some reason you forgot to do it, you won't get an error. 
+Now you don't have to use if-else on your own and know all the fringe cases, if the response is valid
+it will get sent to the user, if not, you get an error logged. There wouldn't be any confusion whether 
+a certain variable has valid data or an error object because the API is not sending data or errors, instead 
+it is returning an object called a promise. And you use .then() and .catch() for the two ways your data 
+might be valid or invalid. 
 
-But say you had this code where the promise was going to be rejected. 
+But now we get to an even better reason for using promises which is linking promises together without 
+creating a nested mess. 
+Check out this pseudo code.
+```javascript
+findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+
+This is a simple and single API call. Now what we want is that if .then() was successful, call another API 
+to check openTimes. Conceptually it is easy once you figure out the following. You can return things from 
+inside the .then() function. 
+So 
+```javascript
+const number = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+		return(45);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+So number will be 45 in this case if there are no errors. But usually we don't do returns like this and 
+instead we return new promises when we want to link actions. Like this. 
 
 ```javascript
-function callbackFunction(parameter) {
-	try {
-		return(parameter.map((x)=>x*2));
-	} catch (error) {
-		return(null);
-	}
-}
-
-const myPromise = new Promise((resolve, reject) => {
-	setTimeout(() => {
-		const output = callbackFunction(65);
-		console.log(output);
-		if (output === null) {
-			reject();
-		} else {
-			resolve();
-		}
-	}, 2000);
-});
-
-myPromise.then(()=>{console.log("I am Resolved")});
+const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+		return new Promise(parameters, url);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
 ```
 
-This is going to throw an error because the reject listener is looking for a .catch() invocation. And unlike .then(), if 
-it doesn't find one, it is going to throw an error and break your script. 
+Now, since we know that out APIs return promises, then we can simply say
+```javascript
+const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+		return openTimes(pharmacy, 'www.openTimes.com/url/pharmacy');
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+So now let's reiterate. The function findingPharmacies returned a promise and we used a .then() function on
+that result and then we used that .then() function to return a new promise. So all we need to do is to attach 
+a new .then() function to the result of the previous. 
+```javascript
+const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+		return openTimes(pharmacy, 'www.openTimes.com/url/pharmacy');
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
 
-So you would provide this .catch() function like this. Basically a promise object also has a .catch() function for 
-this purpose. 
+newPromise
+	.then((isOpen)=>{
+		console.log(isOpen);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+
+So if the findingPharmacies promise is resolved, the openTimes function returns a new promise in the `newPromise`
+ object on which we call another .then() and .catch(). However, when linking promises like this, if 
+ you understand Javascript better and you know that you are not going to be referring `newPromise` again, 
+ then you can avoid creating a new definition like this. 
+
+ ```javascript
+const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+		return openTimes(pharmacy, 'www.openTimes.com/url/pharmacy');
+	})
+	.then((isOpen)=>{
+		console.log(isOpen);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+Effectively this is the same as previous where you are utilizing the dot notation and recognizing 
+what returns what and how to be more efficient with your code. And if you scale it up, you can add more 
+promises to this linking just below the previous as long as every .then() statement returns an API that 
+returns a Promise that then has a .then() function and so on. 
 
 ```javascript
-myPromise.catch(()=>{console.log("I am Rejected")});
+const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+		return openTimes(pharmacy, 'www.openTimes.com/url/pharmacy');
+	})
+	.then((isOpen)=>{
+		console.log(isOpen);
+		return checkStock(medicine, pharmacy, 'www.checkStock.com/url/pharmacy/medicine');
+	})
+	.then((isStocked)=> {
+		console.log(isStocked);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
 ```
 
-So there is a world where you can only provide a catch function without a then function but you must never 
-provide a then function alone without a catch function. 
+So, with the help of promises, you have have much simpler error handling because whereever the error occurs, it 
+gets caught into the one .catch() statement. And the logic is not nested but neatly arranged and 
+order in successive .then() statements. 
 
-However, now things get confusing. What if you want to provide both a then and catch function? You can't 
-just combine the two paths like 
-
-```javascript
-myPromise.then(()=>{console.log("I am Resolved")});
-myPromise.catch(()=>{console.log("I am Rejected")});
-```
-This is not going to work. It is going to throw an error. Instead you have to do it in one line, first calling .then() and then calling .catch() on its output.
-
-```javascript
-myPromise.then().catch()
-```
-The reverse doesn't work. It won't give you an error. But if you write `.catch()` first and then write `.then()`, the resolve will work fine, but for rejection, 
-first the `.catch()` function will be called and then the `.then()` function will be called. So both will be called in case of a rejection of a promise. That is a different can of worms. I won't go into the why of that right now.  
-So you will write the `.then()` and `.catch()` like this for out example. 
-
-```javascript
-myPromise.then(()=>{console.log("I am Resolved")}).catch(()=>{console.log("I am Rejected")});
-```
-Or, structured like this for better understanding.
-
-```javascript
-myPromise
-	.then(()=>{console.log("I am Resolved")})
-	.catch(()=>{console.log("I am Rejected")});
-```
-
-Let's look at the complete code. 
-```javascript
-function callbackFunction(parameter) {
-	try {
-		return(parameter.map((x)=>x*2));
-	} catch (error) {
-		return(null);
-	}
-}
-
-const myPromise = new Promise((resolve, reject) => {
-	setTimeout(() => {
-		const output = callbackFunction(65);
-		console.log(output);
-		if (output === null) {
-			reject();
-		} else {
-			resolve();
-		}
-		setTimeout(()=>{
-			console.log("Waiting")
-		}, 2000);
-	}, 2000);
-});
-
-myPromise
-	.then(()=>{console.log("I am Resolved")})
-	.catch(()=>{console.log("I am Rejected")});
-```
-
-Let's Summarize what we have so far. 
-We created a promise that runs some business logic. Based on the result of that business logic, we had 
-to perform a different function. So we created a resolve path and a reject path. You must have a reject path
-setup using catch but then is optional but usually you will have both .then() and .catch(). 
-
-I have added the second setTimeout to test and show that not providing a catch statement when a reject is received breaks the script and your server. 
-
-## Passing Values using Resolve and Reject
-
-Now the main purpose of promises is not going to be simply having two different paths, but actually returning 
-some values from the asynchronous processes that were going on in the promise. Returning values is quite simple. 
-
-Instead of just using `resolve()`, you use `resolve(value)` and its the same for reject. 
-
-We can change our code to the following. 
-
-```javscript
-function callbackFunction(parameter) {
-	try {
-		return(parameter.map((x)=>x*2));
-	} catch (error) {
-		return(null);
-	}
-}
-
-const myPromise = new Promise((resolve, reject) => {
-	setTimeout(() => {
-		const output = callbackFunction(65);
-		if (output === null) {
-			reject("Callback Function Returned Null");
-		} else {
-			resolve(output);
-		}
-		setTimeout(()=>{
-			console.log("Waiting")
-		}, 2000);
-	}, 2000);
-});
-
-myPromise
-	.then((resolveValue)=>{console.log(resolveValue)})
-	.catch((rejectValue)=>{console.log(rejectValue)});
-```
-
-Play around with this to be fully comfortable with parsing the syntax of a promise. 
+And that right there is the essence of asynchronous programming allowing you to link activities together without 
+stalling the entire script. 
