@@ -1,167 +1,117 @@
-## Reviewing Promises
-
-```javscript
-function callbackFunction(parameter) {
-	try {
-		return(parameter.map((x)=>x*2));
-	} catch (error) {
-		return(null);
-	}
-}
-
-const myPromise = new Promise((resolve, reject) => {
-	setTimeout(() => {
-		const output = callbackFunction(65);
-		if (output === null) {
-			reject("Callback Function Returned Null");
-		} else {
-			resolve(output);
-		}
-		setTimeout(()=>{
-			console.log("Waiting")
-		}, 2000);
-	}, 2000);
-});
-
-myPromise
-	.then((resolveValue)=>{console.log(resolveValue)})
-	.catch((rejectValue)=>{console.log(rejectValue)});
-```
-
-Let me first talk about this code. Functionally, this is how asychronous code is written as. First we have 
-some code that is going to run inside the promise. That is a separate code block on its own. 
-
-And the corresponding .then() and .catch() statements are going to be in a separate block of code. Maybe even separated 
-by other lines of codes and things get confusing. But our minds love how synchronous programming works. So
-some very smart people worked on the promises to give it a better developer experience and make it feel like 
-synchronous execution. 
-
-Under the hood, the technology remains the same, but we use async and await to make promises more readable. 
-And we do this my combining the promise and the .then() and .catch() statements in the same block. 
-
-## Converting Promises to Async Await
+## Making Promises Better
 
 ```javascript
-function callbackFunction(parameter) {
-	return(parameter.map((x)=>x*2));
-}
-
-async function testingAsync () {
-	try {
-		const output = await callbackFunction([1,2,3]);
-		console.log(output);
-	} catch (error) {
-		console.log("Callback Function Returned Null");
-	}
-}
-testingAsync();
+findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+	.then((pharmacy)=>{
+		console.log(pharmacy);
+		return openTimes(pharmacy, 'www.openTimes.com/url/pharmacy');
+	})
+	.then((isOpen)=>{
+		console.log(isOpen);
+		return checkStock(medicine, pharmacy, 'www.checkStock.com/url/pharmacy/medicine');
+	})
+	.then((isStocked)=> {
+		console.log(isStocked);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
 ```
 
-There are some changes but way more simplifications, we can see that the code is cleaner and more 
-readable. Let's see how to construct a promise using async await. 
-Firstly, we need the async keyword that tells NodeJS that this block of code is going to have atleast one 
-asynchronous activity. And this authorizes the use of he await keyword to show which activity is 
-asynchronous. 
-But the async keyword goes behind a function so you will have to encapsulate your logic inside a function. 
+Now, this is readable enough. It's a massive improvement from vanilla callbacks. But it could be better. 
+The async await functionality is built on top of promises as syntactic sugar. Meaning under the hood 
+nothing is changed. But some different keywords make the readability of the syntax.
 
-So we created a function called testAsync and put the keyword async behind it. Then, we need to create a try catch
-block to catch errors that may happen. Whatever is in the try block will try to execute and if there is an
-error it will start to execute the catch block. 
+## Introducing Async Await
 
-In the try block, first we will include what the promise was meant to be intialized as. Earlier on, in the 
-promise we were calling the callbackFunction and storing it in the output. 
-Here we are doing the same. But this time with the await keyword. The await keyword tells NodeJS that this 
-line is a promise. If the promise is resolved, continue on to the next line under the await line. If the 
-promise is rejected, then move to the catch block. 
+First step is to encapsulate your logic that is dealing with external APIs in a function and put the word
+async behind that function. Like this.
+`async function myFunction() {}`
 
-So, once we have the await line, we are going to put everything that would go in the .then() function in a 
-promise just underneath this. No need for a separate definition. Then we close the try block and open a 
-catch block and this behaves exactly as the .catch() block in a promise. 
+The second step is to create a try and catch block. 
 
-Looking at the code, we see that the entire asynchronous fits nicely into one function with all the 
-possible routes of execution encapsulated together in one block instead of multiple and different definitions. 
-This also removes the margin of error with mismanaging promises. 
-
-However, the try catch block can be a bit tricky. For example, the following code does not work. 
+The third step is to call your API within the try block with the added await keyword like this.
 
 ```javascript
-function callbackFunction(parameter) {
-	return(parameter.map((x)=>x*2));
-}
-
-async function testingAsync () {
+async function showcaseFunction () {
 	try {
-
-		setTimeout(()=>{
-			const output = await callbackFunction(65);
-			console.log(output);
-		}, 2000);
-
+		const response = await findingPharmacies(clientLocation, 'www.pharmacies.com/url/location');
+		console.log(response);
 	} catch (error) {
-		console.log("Callback Function Returned Null");
+		console.log(error);
 	}
 }
-testingAsync();
 ```
-There are not one but multiple issues here. 
-The first one is that the await keyword must be directly inside a async function. We are using 
-await inside a synchronous anonymous function. 
-So we will need to change the anonymous function into an async function and remove async from the main function call. 
+This is what the await does. If the promise was going to be rejected, the rejected value is going to be 
+passed into catch as the error. And if the promise was resolved, whatever value was resolved is 
+stored in response and then execution continues to console.log(response); The await is going to pause the 
+execution until the promise is either resolved or rejected. 
+
+No joke, behind the scenes is exactly the same. findingPharmacies will return a promise. The value resolved 
+to .then() is going to be stored in response. And until the promise is resolved and response is populated, 
+the execution is not going to move forward. So this is a way to write asynchronous code as synchronous 
+where we can pretend that it is working synchronously. However, behind the scenes, we are still using .catch() and
+.then(), we just don't have to deal with. 
+
+And let's see how nesting is easier with this. All we have to do is stack these await statements. 
+
 ```javascript
-function callbackFunction(parameter) {
-	return(parameter.map((x)=>x*2));
-}
-
-function testingAsync () {
+async function showcaseFunction () {
 	try {
+		const pharmacy = await findingPharmacies(clientLocation, 'www.pharmacies.com/url/location');
+		const isOpen = await checkOpen(pharmacy, 'www.openTimes.com/url/pharmacy');
+		const isStocked = await checkStock(medicine, pharmacy, 'www.checkStock.com/url/pharmacy/medicine');
 
-		setTimeout(async ()=>{
-			const output = await callbackFunction(65);
-			console.log(output);
-		}, 2000);
-
+		return ({"pharmacy": pharmacy, "isOpen": isOpen, "isStocked": isStocked});
 	} catch (error) {
-		console.log("Callback Function Returned Null");
+		console.log(error);
 	}
 }
-testingAsync();
+showcaseFunction();
 ```
 
-We now have solved one problem but now this still does not work because of the way try catch works. 
-Try catch only works with synchronous code inside the block. setTimeout() is asynchronous. Any error that 
-occurs inside its anonymous function will not be caught and lead to breaking the site. 
+And that's it. No multiple .then() statements. No nesting. Let's reiterate the important points. 
+You must encapsulate this logic in a larger block or module like a function so that you can put the 
+async keyword telling NodeJS to know you are going to be dealing with promises and waiting on them. 
 
-While this is a wonky scenario, but its important to understand scope of the try catch blocks and its interactions with callback 
-functions. So we will shift the try catch block inside the setTimeout for this to work. 
+Then you must use await before calling the third party functions. Those functions have to return promise 
+objects for this to work. If the API is not returning a promise, you most likely won't get an error. But 
+logically it will be flawed in execution. 
+
+So now you have enough of an understanding of Javascript and Asynchronous Programming to get your hands
+dirty with the real stuff. 
+
+Most of this was with pseudo code, understanding is more important than syntax right now. 
+
+Let's do a quick test. What is the output of this? 
 
 ```javascript
-function callbackFunction(parameter) {
-	return(parameter.map((x)=>x*2));
+function customFunction (input) {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(input + 10);
+	});
+	return myPromise;
 }
 
-function testingAsync () {
+function customFunction2 (input) {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(input + 20);
+	});
+	return myPromise;
+}
 
-	setTimeout(async ()=>{
-		try {
-			const output = await callbackFunction(65);
-			console.log(output);
-		} catch (error) {
-			console.log("Callback Function Returned Null");
-		}
-	}, 2000);
-} 
-testingAsync();
+async function showcaseFunction () {
+	try {
+		const output1 = await customFunction(50);
+		const output2 = await customFunction2(output1);
+
+		console.log(output2);
+	} catch (error) {
+		console.log(error);
+	}
+}
+showcaseFunction();
 ```
-
-So let me summarize, always have a try catch block directly around the await line. The await needs the 
-async function in its immediate parent function whether that is anonymous or not. To make a function 
-asynchronous simply add async behind its definition. 
-
-And know that try catch block catches synchronous errors. Await keyword effectively makes an asycnchronous 
-activity look like synchronous and hence the try catch block works without using if statements, resolve, 
-and reject. 
-
-Usually you will not be working with setTimeout, but it is a good thing to practice with to help your understanding 
-of scopes, callback functions, and more. 
-
-One last item. await works in this 
+```text
+80
+```

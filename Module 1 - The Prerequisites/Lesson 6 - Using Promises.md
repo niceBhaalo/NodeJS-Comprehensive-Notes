@@ -53,9 +53,12 @@ findingPharmacy(clientsLocation, (pharmacy)=> {
 
 And if the medicine is stocked, you need to return to the user that your medicine could be found at this 
 pharmacy but this pharmacy closes at this certain time. 
-And since this is just the pseudo code, you can imagine how complicated this nesting can get. Technically 
-this works, but you need so many error handling attached to even simple nesting like this that we 
+And since this is just the pseudo code, you can imagine how complicated this nesting can get. This is 
+colloquially known as callback hell. Technically this works, but you need so many error handling attached
+to even simple nesting like this that we 
 need a different way that is easier, scalable, and more modular. 
+
+## What Are Promises?
 
 That solution requires a NodeJS object called Promise. 
 
@@ -81,6 +84,7 @@ And now it is for the user to have an if statement to know whether the response 
 An error could occur here for many reasons the simplest being incorrect formatting of client's location 
 or connection issues. Instead of making the user of the API manually check for errors, the API 
 developer will create a promise like this. 
+### Creating A Promise
 
 ```javascript
 function findingPharmacies (clientLocation) {
@@ -92,7 +96,7 @@ function findingPharmacies (clientLocation) {
 			reject (error);
 		}
 	});
-	returns (myPromise);
+	return (myPromise);
 }
 ```
 So instead of their being two or multiple return statements, the API developer uses the keywords resolve and reject
@@ -104,6 +108,8 @@ error message. The resolve value will have the valid value, and the reject value
 And the function itself returns the Promise object instead of the individual paths. To access the two 
 possible paths, a Promise has two functions called .then() and .catch(). And we call 
 both of these functions on the returned promise. 
+
+### Receiving a Promise
 
 ```javascript
 findingPharmacies(clientLocation, 'www.pharmacies.com')
@@ -124,7 +130,8 @@ the .then() function. And if there was an error and reject(error) was hit, you w
 the flow of execution from the .catch() function bypassing the .then() function. 
 
 So this is the first main benefit of promises. The API does not return the data but it returns a promise. 
-And then you can access the properties of a promise which are .then() and .catch().
+And then you can access the properties of a promise which are .then() and .catch(). And it is these two 
+properties that are basically hiding the data or the error inside them. 
 
 Now let's look at some working code that uses a promise that you can play with. Let's create an API 
 that does the following. It receives an array of integers and then it doubles every value and returns 
@@ -178,6 +185,7 @@ a certain variable has valid data or an error object because the API is not send
 it is returning an object called a promise. And you use .then() and .catch() for the two ways your data 
 might be valid or invalid. 
 
+### Linking Promises Together 
 But now we get to an even better reason for using promises which is linking promises together without 
 creating a nested mess. 
 Check out this pseudo code.
@@ -193,31 +201,7 @@ findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
 
 This is a simple and single API call. Now what we want is that if .then() was successful, call another API 
 to check openTimes. Conceptually it is easy once you figure out the following. You can return things from 
-inside the .then() function. 
-So 
-```javascript
-const number = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
-	.then((pharmacy)=>{
-		console.log(pharmacy);
-		return(45);
-	})
-	.catch((error)=>{
-		console.log(error);
-	});
-```
-So number will be 45 in this case if there are no errors. But usually we don't do returns like this and 
-instead we return new promises when we want to link actions. Like this. 
-
-```javascript
-const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
-	.then((pharmacy)=>{
-		console.log(pharmacy);
-		return new Promise(parameters, url);
-	})
-	.catch((error)=>{
-		console.log(error);
-	});
-```
+inside the .then() function. But you can only return another promise. 
 
 Now, since we know that out APIs return promises, then we can simply say
 ```javascript
@@ -258,7 +242,7 @@ So if the findingPharmacies promise is resolved, the openTimes function returns 
  then you can avoid creating a new definition like this. 
 
  ```javascript
-const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
 	.then((pharmacy)=>{
 		console.log(pharmacy);
 		return openTimes(pharmacy, 'www.openTimes.com/url/pharmacy');
@@ -276,7 +260,7 @@ promises to this linking just below the previous as long as every .then() statem
 returns a Promise that then has a .then() function and so on. 
 
 ```javascript
-const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
+findingPharmacies(clientLocation, 'www.pharmacies.com/url/location')
 	.then((pharmacy)=>{
 		console.log(pharmacy);
 		return openTimes(pharmacy, 'www.openTimes.com/url/pharmacy');
@@ -295,7 +279,145 @@ const newPromise = findingPharmacies(clientLocation, 'www.pharmacies.com/url/loc
 
 So, with the help of promises, you have have much simpler error handling because whereever the error occurs, it 
 gets caught into the one .catch() statement. And the logic is not nested but neatly arranged and 
-order in successive .then() statements. 
+order in successive .then() statements. And the code itself is so much more readable, scalable, and modular
+than using simple callbacks. 
 
 And that right there is the essence of asynchronous programming allowing you to link activities together without 
 stalling the entire script. 
+
+I will finish this off with some tests. 
+
+What does this return?
+
+```javascript
+function customFunction () {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(10);
+	});
+	return myPromise;
+}
+
+function customFunction2 () {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(20);
+	});
+	return myPromise;
+}
+
+const number = customFunction()
+	.then((data)=>{
+		console.log("Data: ", data);
+		return customFunction2();
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+
+number.then((data)=>{
+	console.log("Data 2: ", data);
+});
+```
+
+```text
+Data: 10
+Data 2: 20
+```
+
+What does this return?
+```javascript
+function customFunction () {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(10);
+	});
+	return myPromise;
+}
+
+function customFunction2 () {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(20);
+	});
+	return myPromise;
+}
+
+customFunction()
+	.then((data)=>{
+		console.log("Data: ", data);
+		return customFunction2();
+	})
+	.then((data)=>{
+		console.log("Data 2: ", data);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+
+It returns the same thing. 
+
+```text
+Data: 10
+Data 2: 20
+```
+
+And lastly, what does this return?
+```javascript
+function customFunction (input) {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(input*2);
+	});
+	return myPromise;
+}
+
+function customFunction2 (input) {
+	const myPromise = new Promise ((resolve,reject)=>{
+		resolve(input+10);
+	});
+	return myPromise;
+}
+
+customFunction(10)
+	.then((data)=>{
+		console.log("Data: ", data);
+		return customFunction2(data+50);
+	})
+	.then((data)=>{
+		console.log("Data 2: ", data);
+	})
+	.catch((error)=>{
+		console.log(error);
+	});
+```
+```text
+Data: 20
+Data 2: 80
+```
+
+And just for the fun of it. Let's also parse through a callback hell example. 
+
+```javascript
+function customFunction (input) {
+	return input + 5;
+}
+
+function customFunction2 (input) {
+	return input + 10;
+}
+
+function customFunction3 (input) {
+	return input + 15;
+}
+
+setTimeout(()=>{
+	const output = customFunction(10);
+	setTimeout(()=>{
+		const output2 = customFunction2(output);
+		setTimeout(()=>{
+			const output3 = customFunction3(output2);
+			console.log(output3);
+		}, 1000);
+	}, 1000);
+}, 1000);
+```
+```text
+40
+```
