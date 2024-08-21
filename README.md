@@ -12,10 +12,14 @@ Modules Completed
 - Module 0
 - Module 1
 
-## Module 0
+## Module 0 - Setting Up
 Module 0 is about Setting Up Git. Will add to it later on with fundamentals on git commands. 
 
-## Module 1
+## Module 1 - The Prerequisites
 Module 1 is about knowing how callback functions, promises, async await, and basic error handling works
 so that when you start to use actual NodeJS modules, you know how the flow of execution between the various
-asynchronous code blocks. The idea is to get you prepared for the first proper server you can make. 
+asynchronous code blocks. The idea is to get you prepared for the first proper server you can make.
+
+## Module 2 - HTTP Module Part 1
+Introduction to HTTP and http and https modules. Implementing http.request. Knowing inheritance of classes 
+like IncomingMessage, Readable, Stream, EventEmitter. 
