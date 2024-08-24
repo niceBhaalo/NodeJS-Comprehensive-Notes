@@ -3,7 +3,7 @@
 When sending or receiving a request, there are two different things called headers and a body. 
 When we use GET method on google.com, all the visual things we see are in the body, such as the 
 search bar, the buttons, and the logo. But there is also multiple headers with some important information about the 
-request as well about the body. 
+request as well about the body. Headers are the metadata for the request or response. 
 
 Look at this
 
@@ -109,7 +109,7 @@ Headers:  [
 ```
 
 Now I don't know how this happens exactly, but through NodeJS, response object also has access to a 
-headers function that parses the rawHeaders output to convert it into a JSON object for better access and 
+headers object that parses the rawHeaders output to convert it into a JSON object for better access and 
 readability. Using `console.log("Headers: ", res.headers);` gives us
 
 ```text

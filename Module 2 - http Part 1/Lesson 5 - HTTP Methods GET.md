@@ -22,9 +22,10 @@ not for GET. All you can pass is the URL, any headers, and any query parameters.
 In some sense, when you enter any URL on the browser, you send a GET request because you are not attaching any
 sort of added information. 
 
-`Idempotent` is a new term here. Idempotent means whether this operation changes the target server. And 
-since a GET request does not make any change in the target server, all GET requests at that URL 
-produce the same result, GET requests are Idempotent. 
+`Idempotent` is a new term here. Idempotent means whether repeating this operation changes the target 
+server or not. And since a GET request does not make any change in the target server, all GET requests at that URL 
+produce the same result, GET requests are Idempotent. But idempotency is mainly about whether accidently 
+sending multiple requests will have the same result or each request will create a new state. 
 
 `Safe` is a new term here. Safe in this context means that on top of idempotency, the server knows that 
 this request should not and does not trigger actions like database updates, or any other sever side 
