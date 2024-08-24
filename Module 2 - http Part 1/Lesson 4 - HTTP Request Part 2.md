@@ -122,4 +122,7 @@ data such as using JSON.parse(data) where we hope data is a valid JSON string, b
 be due to some error and we wouldn't want a parsing error to break the server. 
 So we set up a try catch block for this purpose. 
 
+For example we should be receiving an HTML file here which would not be successfully parsed as JSON and throw 
+an error. 
+
 With this, we complete a good enough understanding of what happens behind the scenes. 
